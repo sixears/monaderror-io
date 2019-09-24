@@ -4,22 +4,28 @@
 
 {- | Utilities for working with `Control.Monad.Except.MonadError` -}
 module MonadError
-  ( MonadError, ѥ, fromMaybe, fromRight
-  , mapMError, mapMError', eFromMaybe, runExceptT, splitMError, throwError )
+  ( MonadError, ѥ, ж, fromMaybe, fromRight
+  , mapMError, mapMError', eFromMaybe, __monadError__, splitMError, throwError )
 where
 
-import Prelude ( )
+import Prelude ( error )
 
 -- base --------------------------------
 
 import Control.Monad   ( Monad, join, return )
 import Data.Bifunctor  ( first )
 import Data.Either     ( Either, either )
+import Data.Function   ( id )
+import Data.Functor    ( fmap )
 import Data.Maybe      ( Maybe, maybe )
 
 -- base-unicode-symbols ----------------
 
 import Data.Function.Unicode  ( (∘) )
+
+-- data-textual ------------------------
+
+import Data.Textual  ( Printable, toString )
 
 -- mtl ---------------------------------
 
@@ -70,5 +76,15 @@ splitMError f = either throwError return ⊳ runExceptT f
 {- | Unicode alias for `splitMError` -}
 ѥ ∷ (MonadError ε η, Monad μ) ⇒ ExceptT ε μ α → μ (η α)
 ѥ = splitMError
+
+----------------------------------------
+
+{- | Turn an exception into an `error`. -}
+__monadError__ ∷ (Monad η, Printable ε) ⇒ ExceptT ε η α → η α
+__monadError__ = fmap (either (error ∘ toString) id) ⊳ splitMError
+
+{- | Unicode alias for `__monadError__` -}
+ж ∷ (Monad η, Printable ε) ⇒ ExceptT ε η α → η α
+ж = __monadError__
 
 -- that's all, folks! ---------------------------------------------------------

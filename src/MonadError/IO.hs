@@ -1,15 +1,18 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE UnicodeSyntax     #-}
 
 module MonadError.IO
-  ( asIOError, hoistMonadIOError, ioMonadErr, ioMonadError
-  , wrapAsIOErr, wrapIOErr )
+  ( ӝ, asIOError, eitherIOThrow, eitherIOThrowT, hoistMonadIOError, ioMonadErr
+  , ioMonadError, ioThrow, __monadIOError__, wrapAsIOErr, wrapIOErr )
 where
 
 -- base --------------------------------
 
-import Control.Exception.Base  ( IOException )
+import qualified  System.IO.Error
+
+import Control.Exception.Base  ( Exception, IOException, throwIO )
 import Control.Monad           ( (>>=), join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Bifunctor          ( first )
@@ -17,19 +20,25 @@ import Data.Either             ( Either, either )
 import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
 import System.IO               ( IO )
-import System.IO.Error         ( catchIOError )
+import System.IO.Error         ( catchIOError, userError )
+import Text.Show               ( Show( show ) )
 
 -- base-unicode-symbols ----------------
 
 import Data.Function.Unicode  ( (∘) )
 
+-- data-textual ------------------------
+
+import Data.Textual  ( Printable, toString )
+
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Functor  ( (⊳) )
+import Data.MoreUnicode.Monad    ( (≫) )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( ExceptT, MonadError, throwError )
+import Control.Monad.Except  ( ExceptT, MonadError, runExceptT, throwError )
 import Control.Lens.Review   ( (#) )
 
 ------------------------------------------------------------
@@ -85,5 +94,30 @@ wrapAsIOErr f = _wrapIOErr f asIOError
  -}
 wrapIOErr ∷ (MonadIO μ, MonadError ε μ) ⇒ (IOError → ε) → IO α → μ α
 wrapIOErr f = _wrapIOErr f ioMonadErr
+
+----------------------------------------
+
+{- | Turn an `Exception` into an `IOError` within IO. -}
+__monadIOError__ ∷ ∀ ε μ α . (MonadIO μ, Exception ε) ⇒ ExceptT ε IO α → μ α
+__monadIOError__ io = liftIO $ splitMError io ≫ either throwIO return
+
+{- | Unicode alias for __monadIOError__ -}
+ӝ ∷ (MonadIO μ, Exception ε) ⇒ ExceptT ε IO α → μ α
+ӝ = __monadIOError__
+
+----------------------------------------
+
+{- | Throw a `Printable` as a user error in `IO`. -}
+ioThrow ∷ (MonadIO μ, Printable τ) ⇒ τ → μ α
+ioThrow = liftIO ∘ System.IO.Error.ioError ∘ System.IO.Error.userError ∘ toString
+
+{- | Convert a left value to an `IOException`. -}
+eitherIOThrow ∷ (Show e, MonadIO μ) ⇒ Either e a → μ a
+eitherIOThrow =
+  either (liftIO ∘ System.IO.Error.ioError ∘ userError ∘ show) return
+
+{- | Convert a MonadError into a `userError` in `IO`. -}
+eitherIOThrowT ∷ (MonadIO μ, Show ε) ⇒ ExceptT ε μ α → μ α
+eitherIOThrowT f = runExceptT f >>= eitherIOThrow
 
 -- that's all, folks! ---------------------------------------------------------
