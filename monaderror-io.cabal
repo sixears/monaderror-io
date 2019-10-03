@@ -60,7 +60,7 @@ library
   build-depends:       base, base-unicode-symbols, data-textual, lens, mtl
                      , text-printer
 
-                     , more-unicode == 0.0.8.0
+                     , more-unicode >= 0.0.8.0
 
   -- Directories containing source files.
   hs-source-dirs:      src
