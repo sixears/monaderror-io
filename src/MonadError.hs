@@ -4,7 +4,7 @@
 
 {- | Utilities for working with `Control.Monad.Except.MonadError` -}
 module MonadError
-  ( MonadError, ѥ, ж, fromMaybe, fromRight
+  ( MonadError, ѥ, ж, ѭ, eToMaybe, fromMaybe, fromRight
   , mapMError, mapMError', eFromMaybe, __monadError__, splitMError, throwError )
 where
 
@@ -14,10 +14,10 @@ import Prelude ( error )
 
 import Control.Monad   ( Monad, join, return )
 import Data.Bifunctor  ( first )
-import Data.Either     ( Either, either )
+import Data.Either     ( Either( Left, Right ), either )
 import Data.Function   ( id )
 import Data.Functor    ( fmap )
-import Data.Maybe      ( Maybe, maybe )
+import Data.Maybe      ( Maybe( Just, Nothing ), maybe )
 
 -- base-unicode-symbols ----------------
 
@@ -86,5 +86,16 @@ __monadError__ = fmap (either (error ∘ toString) id) ⊳ splitMError
 {- | Unicode alias for `__monadError__` -}
 ж ∷ (Monad η, Printable ε) ⇒ ExceptT ε η α → η α
 ж = __monadError__
+
+----------------------------------------
+
+{- | Convert an either to a maybe on the RHS. -}
+eToMaybe ∷ Either χ α → Maybe α
+eToMaybe (Left  _) = Nothing
+eToMaybe (Right a) = Just a
+
+-- | Pronounced 'maybe-funnel', or maybe 'yus', this is an alias for `eToMaybe`.
+ѭ ∷ Either χ α → Maybe α
+ѭ = eToMaybe
 
 -- that's all, folks! ---------------------------------------------------------

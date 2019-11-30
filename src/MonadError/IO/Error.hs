@@ -110,9 +110,10 @@ isPermError = has (_IOErr ∘ to ioeGetErrorType ∘ _PermissionDenied)
 
 ----------------------------------------
 
-{- | Convert a function returning IO α to one that handles some IOErrors
-     (e.g., fileNotExist) by returning Nothing, and otherwise returns Just α
-     or rethrows other IOErrors.
+{- | Given a `Foldable` of predicates that identify types of `IOError`, convert
+     a possible IOError to a `MonadError` (for errors that have no matching
+     predicate), a `Nothing` (for errors that do have a matching predicate) or a
+     value (for non-errors).
 -}
 squashIOErrs ∷ (AsIOError ε, MonadError ε μ, Foldable φ) ⇒
                φ (IOError → Bool) → Either ε α → μ (Maybe α)
