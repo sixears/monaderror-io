@@ -1,9 +1,12 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE UnicodeSyntax     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UnicodeSyntax        #-}
 
 module MonadError.IO.Error
   ( AsIOError(..), IOError(..)
+  , (~~), ioeAdd
   , ioError, isNoSuchThingError, isPermError
   , squashIOErrs, squashIOErrsB
   , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB, userE
@@ -22,11 +25,13 @@ import Data.Bool               ( Bool( False ) )
 import Data.Either             ( Either( Left, Right ) )
 import Data.Eq                 ( Eq )
 import Data.Foldable           ( Foldable, any )
-import Data.Function           ( ($), id )
+import Data.Function           ( ($), flip, id )
 import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe( Just, Nothing ), maybe )
+import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe, maybe )
 import Data.String             ( String )
-import System.IO.Error         ( ioeGetErrorType, userError )
+import System.IO               ( FilePath, Handle )
+import System.IO.Error         ( ioeGetErrorType, ioeGetFileName, ioeGetHandle
+                               , ioeGetLocation, mkIOError, userError )
 import Text.Show               ( Show( show ) )
 
 -- base-unicode-symbols ----------------
@@ -147,5 +152,27 @@ squashNoSuchThingT = join ∘ fmap squashNoSuchThing ∘ splitMError
 squashNoSuchThingB ∷ (AsIOError ε, MonadError ε μ) ⇒
                      Either ε Bool → μ Bool
 squashNoSuchThingB = squashIOErrsB [isNoSuchThingError]
+
+----------------------------------------
+
+class IOEAddable α where
+  {- | Provide a default value for one of IOError's attributes; e.g., its
+       filename or handle -}
+  ioeAdd ∷ AsIOError ε ⇒ α → IOError → ε
+  (~~) ∷ AsIOError ε ⇒ IOError → α → ε
+  (~~) = flip ioeAdd
+
+instance IOEAddable FilePath where
+  ioeAdd f (IOErr e) =
+    let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
+                       (ioeGetHandle e) (Just $ fromMaybe f (ioeGetFileName e))
+     in _IOErr # e'
+
+instance IOEAddable Handle where
+  ioeAdd h (IOErr e) =
+    let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
+                       (Just $ fromMaybe h (ioeGetHandle e)) (ioeGetFileName e)
+     in _IOErr # e'
+
 
 -- that's all, folks! ----------------------------------------------------------
