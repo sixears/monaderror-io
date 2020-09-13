@@ -8,7 +8,9 @@ module MonadError.IO.Error
   ( AsIOError(..), IOError(..)
   , (~~), ioeAdd
   , ioError, isNoSuchThingError, isPermError
+  , isInappropriateTypeError
   , squashIOErrs, squashIOErrsB
+  , squashInappropriateType, squashInappropriateTypeB, squashInappropriateTypeT
   , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB, userE
   )
 where
@@ -48,7 +50,8 @@ import Control.Lens.Fold     ( has )
 import Control.Lens.Getter   ( to )
 import Control.Lens.Prism    ( Prism', prism' )
 import Control.Lens.Review   ( (#) )
-import System.IO.Error.Lens  ( _NoSuchThing, _PermissionDenied )
+import System.IO.Error.Lens  ( _NoSuchThing, _InappropriateType
+                             , _PermissionDenied )
 
 -- mtl ---------------------------------
 
@@ -56,6 +59,7 @@ import Control.Monad.Except  ( ExceptT, MonadError, throwError )
 
 -- more-unicode ------------------------
 
+import Data.MoreUnicode.Bool  ( 𝔹 )
 import Data.MoreUnicode.Lens  ( (⩼) )
 
 -- text-printer ------------------------
@@ -138,20 +142,39 @@ squashIOErrsB f = fmap (maybe False id) ∘ squashIOErrs f
 {- | Given an Either IOError α (typically, a MonadError IOError μ ⇒ μ α),
      convert a 'NoSuchThing' error (e.g., DoesNotExist) to a Nothing of Maybe α.
  -}
-squashNoSuchThing ∷ (AsIOError ε, MonadError ε μ) ⇒
-                    Either ε α → μ (Maybe α)
+squashNoSuchThing ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε α → μ (Maybe α)
 squashNoSuchThing = squashIOErrs [isNoSuchThingError]
 
-
 {- | `squashNoSuchThing` for `ExceptT` -}
-squashNoSuchThingT ∷ (AsIOError ε, MonadError ε μ) ⇒
-                     ExceptT ε μ α → μ (Maybe α)
+squashNoSuchThingT ∷ (AsIOError ε, MonadError ε μ) ⇒ ExceptT ε μ α → μ (Maybe α)
 squashNoSuchThingT = join ∘ fmap squashNoSuchThing ∘ splitMError
 
 {- | `squashNoSuchThing` specialized to `Bool` (akin to `squashIOErrsB` -}
-squashNoSuchThingB ∷ (AsIOError ε, MonadError ε μ) ⇒
-                     Either ε Bool → μ Bool
+squashNoSuchThingB ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε Bool → μ Bool
 squashNoSuchThingB = squashIOErrsB [isNoSuchThingError]
+
+----------------------------------------
+
+{- | Is a given IOError a NoSuchThing (DoesNotExist)? -}
+isInappropriateTypeError ∷ AsIOError ε ⇒ ε → 𝔹
+isInappropriateTypeError =
+  has (_IOErr ∘ to ioeGetErrorType ∘ _InappropriateType )
+
+{- | Given an Either IOError α (typically, a MonadError IOError μ ⇒ μ α),
+     convert an 'InappropriateType' error to a Nothing of Maybe α.
+ -}
+squashInappropriateType ∷ (AsIOError ε, MonadError ε μ) ⇒
+                          Either ε α → μ (Maybe α)
+squashInappropriateType = squashIOErrs [isInappropriateTypeError]
+
+{- | `squashInappropriateType` for `ExceptT` -}
+squashInappropriateTypeT ∷ (AsIOError ε, MonadError ε μ) ⇒
+                           ExceptT ε μ α → μ (Maybe α)
+squashInappropriateTypeT = join ∘ fmap squashInappropriateType ∘ splitMError
+
+{- | `squashInappropriateType` specialized to `𝔹` (akin to `squashIOErrsB` -}
+squashInappropriateTypeB ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε 𝔹 → μ 𝔹
+squashInappropriateTypeB = squashIOErrsB [isInappropriateTypeError]
 
 ----------------------------------------
 

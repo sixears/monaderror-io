@@ -47,7 +47,6 @@ mapMError f = fromRight ∘ first f
 {- | Map a monad error that is embedded within or joined by another Monad -}
 
 mapMError' ∷ MonadError ε μ ⇒ (ι → ε) → ExceptT ι μ α → μ α
--- mapMError' f = join ∘ fmap (mapMError f) ∘ splitMError
 mapMError' f = join ∘ (mapMError f ⩺ splitMError)
 
 ----------------------------------------

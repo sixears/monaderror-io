@@ -1,3 +1,7 @@
+1.0.4.0 2020-09-13
+==================
+- add isInappropriateTypeError and friends
+
 1.0.3.0 2020-02-04
 ==================
 - add IOEAddable, ioeAdd, (~~)
