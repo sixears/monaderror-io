@@ -1,3 +1,7 @@
+1.0.5.0 2020-09-14
+==================
+- add ӂ, asIOErrorY
+
 1.0.4.0 2020-09-13
 ==================
 - add isInappropriateTypeError and friends

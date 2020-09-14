@@ -4,8 +4,10 @@
 {-# LANGUAGE UnicodeSyntax     #-}
 
 module MonadError.IO
-  ( ӝ, asIOError, eitherIOThrow, eitherIOThrowT, hoistMonadIOError, ioMonadErr
-  , ioMonadError, ioThrow, __monadIOError__, wrapAsIOErr, wrapIOErr )
+  ( ӝ
+  , asIOError, asIOErrorY, eitherIOThrow, eitherIOThrowT, hoistMonadIOError
+  , ioMonadErr, ioMonadError, ioThrow, __monadIOError__, wrapAsIOErr, wrapIOErr
+  )
 where
 
 -- base --------------------------------
@@ -13,12 +15,13 @@ where
 import qualified  System.IO.Error
 
 import Control.Exception.Base  ( Exception, IOException, throwIO )
-import Control.Monad           ( (>>=), join, return )
+import Control.Monad           ( join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Bifunctor          ( first )
 import Data.Either             ( Either, either )
 import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
+import Data.Maybe              ( Maybe )
 import System.IO               ( IO )
 import System.IO.Error         ( catchIOError, userError )
 import Text.Show               ( Show( show ) )
@@ -45,7 +48,7 @@ import Control.Lens.Review   ( (#) )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadError.IO.Error  ( AsIOError, IOError, _IOErr ) 
+import MonadError.IO.Error  ( AsIOError, IOError, _IOErr, squashNoSuchThing ) 
 import MonadError           ( mapMError, splitMError )  
 
 -------------------------------------------------------------------------------
@@ -59,7 +62,7 @@ ioMonadError io = liftIO $ catchIOError (return ⊳ io) (return ∘ throwError)
 {- | Hoist an IO (Either IOException α) to `MonadError`/`MonadIO`. -}
 hoistMonadIOError ∷ (MonadIO μ, AsIOError ε, MonadError ε μ)
                   ⇒ IO (Either IOException α) → μ α
-hoistMonadIOError eio = liftIO eio >>= mapMError (_IOErr #)
+hoistMonadIOError eio = liftIO eio ≫ mapMError (_IOErr #)
 
 ----------------------------------------
 
@@ -70,7 +73,18 @@ asIOError = hoistMonadIOError ∘ ioMonadError
 
 ----------------------------------------
 
+{- | Perform some `IO`, catching any `IOError`s into a `MonadError` (in a
+     `MonadIO`); BUT any 'NoSuchThing' error (e.g., DoesNotExist) will be
+     converted to `Nothing`. -}
+asIOErrorY ∷ ∀ α ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) =>
+            IO α -> μ (Maybe α)
+
+asIOErrorY = join ∘ fmap squashNoSuchThing ∘ splitMError ∘ asIOError
+
+----------------------------------------
+
 {- | `asIOError` specialized to `IOError` -}
+{-# DEPRECATED ioMonadError "use `asIOError @IOError` instead" #-}
 ioMonadErr ∷ (MonadIO μ, MonadError IOError μ) ⇒ IO α → μ α
 ioMonadErr = asIOError
 
@@ -92,6 +106,7 @@ wrapAsIOErr f = _wrapIOErr f asIOError
 {- | Take an IO Action, convert it to a MonadError-function, wrapping any
      `IOError` with a custom type.
  -}
+{-# DEPRECATED wrapIOErr "use `wrapAsIOErr @IOError` instead" #-}
 wrapIOErr ∷ (MonadIO μ, MonadError ε μ) ⇒ (IOError → ε) → IO α → μ α
 wrapIOErr f = _wrapIOErr f ioMonadErr
 
@@ -118,6 +133,6 @@ eitherIOThrow =
 
 {- | Convert a MonadError into a `userError` in `IO`. -}
 eitherIOThrowT ∷ (MonadIO μ, Show ε) ⇒ ExceptT ε μ α → μ α
-eitherIOThrowT f = runExceptT f >>= eitherIOThrow
+eitherIOThrowT f = runExceptT f ≫ eitherIOThrow
 
 -- that's all, folks! ---------------------------------------------------------

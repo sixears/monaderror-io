@@ -4,20 +4,24 @@
 
 {- | Utilities for working with `Control.Monad.Except.MonadError` -}
 module MonadError
-  ( MonadError, ѥ, ж, ѭ, eToMaybe, fromMaybe, fromRight
-  , mapMError, mapMError', eFromMaybe, __monadError__, splitMError, throwError )
+  ( MonadError
+  , ѥ, ж, ѭ, ӂ
+  , eFromMaybe, eToMaybe, fromMaybe, fromRight, mapMError, mapMError'
+  , __monadError__, mErrFail, splitMError, throwError
+  )
 where
 
 import Prelude ( error )
 
 -- base --------------------------------
 
-import Control.Monad   ( Monad, join, return )
-import Data.Bifunctor  ( first )
-import Data.Either     ( Either( Left, Right ), either )
-import Data.Function   ( id )
-import Data.Functor    ( fmap )
-import Data.Maybe      ( Maybe( Just, Nothing ), maybe )
+import Control.Monad       ( Monad, join, return )
+import Control.Monad.Fail  ( MonadFail, fail )
+import Data.Bifunctor      ( first )
+import Data.Either         ( Either( Left, Right ), either )
+import Data.Function       ( id )
+import Data.Functor        ( fmap )
+import Data.Maybe          ( Maybe( Just, Nothing ), maybe )
 
 -- base-unicode-symbols ----------------
 
@@ -96,5 +100,14 @@ eToMaybe (Right a) = Just a
 -- | Pronounced 'maybe-funnel', or maybe 'yus', this is an alias for `eToMaybe`.
 ѭ ∷ Either χ α → Maybe α
 ѭ = eToMaybe
+
+----------------------------------------
+
+{- | Convert a MonadError (or, indeed, any `Either`) to a MonadFail. -}
+mErrFail ∷ (MonadFail η, Printable τ) ⇒ Either τ β → η β
+mErrFail = either (fail ∘ toString) return
+
+ӂ ∷ (MonadFail η, Printable τ) ⇒ Either τ β → η β
+ӂ = mErrFail
 
 -- that's all, folks! ---------------------------------------------------------
