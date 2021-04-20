@@ -5,8 +5,9 @@
 
 module MonadError.IO
   ( ӝ
-  , asIOError, asIOErrorY, eitherIOThrow, eitherIOThrowT, hoistMonadIOError
-  , ioMonadErr, ioMonadError, ioThrow, __monadIOError__, wrapAsIOErr, wrapIOErr
+  , asIOError, asIOErrorT, asIOErrorY, eitherIOThrow, eitherIOThrowT
+  , hoistMonadIOError, ioMonadErr, ioMonadError, ioThrow, __monadIOError__
+  , wrapAsIOErr, wrapIOErr
   )
 where
 
@@ -70,6 +71,13 @@ hoistMonadIOError eio = liftIO eio ≫ mapMError (_IOErr #)
      `MonadIO`) -}
 asIOError ∷ (AsIOError ε, MonadIO μ, MonadError ε μ) ⇒ IO α → μ α
 asIOError = hoistMonadIOError ∘ ioMonadError
+
+----------------------------------------
+
+{- | Take some IO action, in a context which has other exceptions; catch any IO
+     exceptions, and `join` them with the context exceptions. -}
+asIOErrorT ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ ExceptT ε IO α → μ α
+asIOErrorT = join ∘ asIOError ∘ splitMError
 
 ----------------------------------------
 
