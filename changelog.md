@@ -1,3 +1,11 @@
+1.1.0.1 2021-05-04
+==================
+- aggressive littering of HasCallStack
+
+1.1.0.0 2021-05-03
+==================
+- add stacktrace to IOError
+
 1.0.6.0 2021-04-20
 ==================
 - add asIOErrorT

@@ -5,10 +5,11 @@
 {-# LANGUAGE UnicodeSyntax        #-}
 
 module MonadError.IO.Error
-  ( AsIOError(..), IOError(..)
+  ( AsIOError(..), IOError -- hide constructor, to allow for upgrades, etc.,
   , (~~), ioeAdd
-  , ioError, isNoSuchThingError, isPermError
+  , ioErr, ioError, isNoSuchThingError, isPermError
   , isInappropriateTypeError
+  , mkIOErr
   , squashIOErrs, squashIOErrsB
   , squashInappropriateType, squashInappropriateTypeB, squashInappropriateTypeT
   , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB, userE
@@ -25,12 +26,13 @@ import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Control.Monad           ( join, return )
 import Data.Bool               ( Bool( False ) )
 import Data.Either             ( Either( Left, Right ) )
-import Data.Eq                 ( Eq )
+import Data.Eq                 ( Eq( (==) ) )
 import Data.Foldable           ( Foldable, any )
 import Data.Function           ( ($), flip, id )
 import Data.Functor            ( fmap )
 import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe, maybe )
 import Data.String             ( String )
+import GHC.Stack               ( CallStack, HasCallStack, callStack )
 import System.IO               ( FilePath, Handle )
 import System.IO.Error         ( ioeGetErrorType, ioeGetFileName, ioeGetHandle
                                , ioeGetLocation, mkIOError, userError )
@@ -44,10 +46,15 @@ import Data.Function.Unicode  ( (∘) )
 
 import Data.Textual  ( Printable( print ) )
 
+-- has-callstack -----------------------
+
+import HasCallstack  ( HasCallstack( callstack ) )
+
 -- lens --------------------------------
 
 import Control.Lens.Fold     ( has )
 import Control.Lens.Getter   ( to )
+import Control.Lens.Lens     ( lens )
 import Control.Lens.Prism    ( Prism', prism' )
 import Control.Lens.Review   ( (#) )
 import System.IO.Error.Lens  ( _NoSuchThing, _InappropriateType
@@ -74,29 +81,43 @@ import MonadError  ( splitMError )
 
 -------------------------------------------------------------------------------
 
-newtype IOError = IOErr { unErr ∷ IOException }
-  deriving Eq
+data IOError = IOErr { unErr ∷ IOException, _callstack ∷ CallStack }
+  deriving Show
 
-class AsIOError e where
-  _IOError ∷ Prism' e IOError
-  _IOErr   ∷ Prism' e IOException
-  _IOErr   = _IOError ∘ _IOErr
+instance HasCallstack IOError where
+  callstack = lens _callstack (\ ioe cs → ioe { _callstack = cs })
 
-instance AsIOError IOError where
-  _IOError = id
-  _IOErr   = prism' IOErr (Just ∘ unErr)
+instance Eq IOError where
+  (IOErr e _) == (IOErr e' _) = e == e'
 
-instance Show IOError where
-  show (IOErr e) = show e
+--instance Show IOError where
+--  show (IOErr e cs) = show e ⊕ show cs
 
 instance Exception IOError
 
 instance Printable IOError where
-  print = P.string ∘ show
+  print = P.string ∘ show ∘ unErr
+
+ioErr ∷ HasCallStack ⇒ IOException → IOError
+ioErr e = IOErr e callStack
+
+mkIOErr ∷ IOException → CallStack → IOError
+mkIOErr = IOErr
+
+------------------------------------------------------------
+
+class AsIOError e where
+  _IOError ∷ HasCallStack ⇒ Prism' e IOError
+  _IOErr   ∷ HasCallStack ⇒ Prism' e IOException
+  _IOErr   = _IOError ∘ _IOErr
+
+instance AsIOError IOError where
+  _IOError = id
+  _IOErr   = prism' ioErr (Just ∘ unErr)
 
 ----------------------------------------
 
-userE ∷ AsIOError ε ⇒ String → ε
+userE ∷ (AsIOError ε, HasCallStack) ⇒ String → ε
 userE = (_IOErr #) ∘ userError
 
 ----------------------------------------
@@ -186,16 +207,16 @@ class IOEAddable α where
   (~~) = flip ioeAdd
 
 instance IOEAddable FilePath where
-  ioeAdd f (IOErr e) =
+  ioeAdd f (IOErr e cs) =
     let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
                        (ioeGetHandle e) (Just $ fromMaybe f (ioeGetFileName e))
-     in _IOErr # e'
+     in _IOError # IOErr e' cs
 
 instance IOEAddable Handle where
-  ioeAdd h (IOErr e) =
+  ioeAdd h (IOErr e cs) =
     let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
                        (Just $ fromMaybe h (ioeGetHandle e)) (ioeGetFileName e)
-     in _IOErr # e'
+     in _IOError # IOErr e' cs
 
 
 -- that's all, folks! ----------------------------------------------------------

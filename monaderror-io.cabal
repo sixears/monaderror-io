@@ -7,7 +7,7 @@ name:                monaderror-io
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.0.6.0
+version:             1.1.0.1
 
 -- A short (one-line) description of the package.
 synopsis:            An AsIOError class for compound errors, and some MonadError
@@ -50,7 +50,7 @@ library
   exposed-modules:     MonadError, MonadError.IO, MonadError.IO.Error
 
   -- modules included in this library but not exported.
-  other-modules:   
+  other-modules:
 
   default-extensions:  NoImplicitPrelude
   -- LANGUAGE extensions used by modules in this package.
@@ -60,7 +60,11 @@ library
   build-depends:       base, base-unicode-symbols, data-textual, lens, mtl
                      , text-printer
 
-                     , more-unicode >= 0.0.13.0
+                     -- keep the dependencies super-minimal, this is near the
+                     -- root of the dependency tree and everybody uses it.
+                     -- E.g., don't use tfmt, that brings in mucho stuff
+                     , has-callstack >= 1.0.0.0
+                     , more-unicode  >= 0.0.13.0
 
   -- Directories containing source files.
   hs-source-dirs:      src
