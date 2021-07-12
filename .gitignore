@@ -26,6 +26,6 @@ src/HaddockTest.hs
 default.nix.orig
 default.nix.bak
 .ghc.environment.*
-cabal.project.local
+cabal.project.local*
 dist-newstyle/
 dist-newstyle/

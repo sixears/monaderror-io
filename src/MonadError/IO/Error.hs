@@ -1,9 +1,3 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE NoImplicitPrelude    #-}
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE UnicodeSyntax        #-}
-
 module MonadError.IO.Error
   ( AsIOError(..), IOError -- hide constructor, to allow for upgrades, etc.,
   , (~~), ioeAdd
@@ -32,6 +26,7 @@ import Data.Function           ( ($), flip, id )
 import Data.Functor            ( fmap )
 import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe, maybe )
 import Data.String             ( String )
+import GHC.Generics            ( Generic )
 import GHC.Stack               ( CallStack, HasCallStack, callStack )
 import System.IO               ( FilePath, Handle )
 import System.IO.Error         ( ioeGetErrorType, ioeGetFileName, ioeGetHandle
@@ -45,6 +40,10 @@ import Data.Function.Unicode  ( (∘) )
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ) )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData( rnf ), rwhnf )
 
 -- has-callstack -----------------------
 
@@ -82,7 +81,10 @@ import MonadError  ( splitMError )
 -------------------------------------------------------------------------------
 
 data IOError = IOErr { unErr ∷ IOException, _callstack ∷ CallStack }
-  deriving Show
+  deriving (Generic,Show)
+
+instance NFData IOError where
+  rnf (IOErr ioe cs) = rnf (rwhnf ioe, rnf cs)
 
 instance HasCallstack IOError where
   callstack = lens _callstack (\ ioe cs → ioe { _callstack = cs })

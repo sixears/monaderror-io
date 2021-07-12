@@ -1,3 +1,7 @@
+1.1.1.0 2021-07-12
+==================
+- add NFData instance of IOError
+
 1.1.0.1 2021-05-04
 ==================
 - aggressive littering of HasCallStack
