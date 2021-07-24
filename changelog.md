@@ -1,3 +1,8 @@
+1.1.2.0 2021-07-24
+==================
+- add ioeErrorString,ioeFilename,ioeHandle,ioeLocation,ioeType
+
+
 1.1.1.0 2021-07-12
 ==================
 - add NFData instance of IOError

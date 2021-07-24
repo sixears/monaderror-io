@@ -1,6 +1,7 @@
 module MonadError.IO.Error
   ( AsIOError(..), IOError -- hide constructor, to allow for upgrades, etc.,
   , (~~), ioeAdd
+  , ioeErrorString, ioeFilename, ioeHandle, ioeLocation, ioeType
   , ioErr, ioError, isNoSuchThingError, isPermError
   , isInappropriateTypeError
   , mkIOErr
@@ -29,8 +30,11 @@ import Data.String             ( String )
 import GHC.Generics            ( Generic )
 import GHC.Stack               ( CallStack, HasCallStack, callStack )
 import System.IO               ( FilePath, Handle )
-import System.IO.Error         ( ioeGetErrorType, ioeGetFileName, ioeGetHandle
-                               , ioeGetLocation, mkIOError, userError )
+import System.IO.Error         ( IOErrorType
+                               , ioeGetErrorString, ioeGetErrorType
+                               , ioeGetFileName, ioeGetHandle, ioeGetLocation
+                               , ioeGetErrorType, mkIOError, userError
+                               )
 import Text.Show               ( Show( show ) )
 
 -- base-unicode-symbols ----------------
@@ -65,8 +69,11 @@ import Control.Monad.Except  ( ExceptT, MonadError, throwError )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Bool  ( 𝔹 )
-import Data.MoreUnicode.Lens  ( (⩼) )
+import Data.MoreUnicode.Bool     ( 𝔹 )
+import Data.MoreUnicode.Functor  ( (⊳) )
+import Data.MoreUnicode.Lens     ( (⩼) )
+import Data.MoreUnicode.Maybe    ( 𝕄 )
+import Data.MoreUnicode.String   ( 𝕊 )
 
 -- text-printer ------------------------
 
@@ -79,6 +86,10 @@ import qualified  Text.Printer  as  P
 import MonadError  ( splitMError )
 
 -------------------------------------------------------------------------------
+
+type ℍ = Handle
+
+------------------------------------------------------------
 
 data IOError = IOErr { unErr ∷ IOException, _callstack ∷ CallStack }
   deriving (Generic,Show)
@@ -127,6 +138,31 @@ userE = (_IOErr #) ∘ userError
 {- | raise an IOError in the IO Monad -}
 ioError ∷ MonadIO μ ⇒ IOError → μ α
 ioError = liftIO ∘ SysIOError.ioError ∘ unErr
+
+----------------------------------------
+
+ioeFilename ∷ AsIOError ε ⇒ ε → 𝕄 FilePath
+ioeFilename e = join $ ioeGetFileName ⊳ e ⩼ _IOErr
+
+----------------------------------------
+
+ioeHandle ∷ AsIOError ε ⇒ ε → 𝕄 ℍ
+ioeHandle e = join $ ioeGetHandle ⊳ e ⩼ _IOErr
+
+----------------------------------------
+
+ioeType ∷ AsIOError ε ⇒ ε → 𝕄 IOErrorType
+ioeType e = ioeGetErrorType ⊳ e ⩼ _IOErr
+
+----------------------------------------
+
+ioeLocation ∷ AsIOError ε ⇒ ε → 𝕄 𝕊
+ioeLocation e = ioeGetLocation ⊳ e ⩼ _IOErr
+
+----------------------------------------
+
+ioeErrorString ∷ AsIOError ε ⇒ ε → 𝕄 𝕊
+ioeErrorString e = ioeGetErrorString ⊳ e ⩼ _IOErr
 
 ----------------------------------------
 
@@ -214,7 +250,7 @@ instance IOEAddable FilePath where
                        (ioeGetHandle e) (Just $ fromMaybe f (ioeGetFileName e))
      in _IOError # IOErr e' cs
 
-instance IOEAddable Handle where
+instance IOEAddable ℍ where
   ioeAdd h (IOErr e cs) =
     let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
                        (Just $ fromMaybe h (ioeGetHandle e)) (ioeGetFileName e)
