@@ -1,7 +1,11 @@
+1.2.0.0 2021-09-04
+==================
+- add explicit 'forall's throughout MonadError.hs to fix the ordering of the
+  type variables
+
 1.1.2.0 2021-07-24
 ==================
 - add ioeErrorString,ioeFilename,ioeHandle,ioeLocation,ioeType
-
 
 1.1.1.0 2021-07-12
 ==================

@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE UnicodeSyntax     #-}
-
 module MonadError.IO
   ( ӝ
   , asIOError, asIOErrorT, asIOErrorY, eitherIOThrow, eitherIOThrowT
