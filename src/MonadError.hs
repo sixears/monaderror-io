@@ -3,7 +3,7 @@ module MonadError
   ( MonadError
   , ѥ, ж, ѭ, ӂ
   , eFromMaybe, eToMaybe, fromMaybe, fromRight, mapMError, mapMError'
-  , __monadError__, mErrFail, splitMError, throwError
+  , modifyError, __monadError__, mErrFail, splitMError, throwError
   )
 where
 
@@ -14,10 +14,10 @@ import Prelude ( error )
 import Control.Monad       ( Monad, join, return )
 import Control.Monad.Fail  ( MonadFail, fail )
 import Data.Bifunctor      ( first )
-import Data.Either         ( Either( Left, Right ), either )
+import Data.Either         ( either )
 import Data.Function       ( id )
 import Data.Functor        ( fmap )
-import Data.Maybe          ( Maybe( Just, Nothing ), maybe )
+import Data.Maybe          ( maybe )
 import GHC.Stack           ( HasCallStack )
 
 -- base-unicode-symbols ----------------
@@ -34,14 +34,16 @@ import Control.Monad.Except  ( MonadError, ExceptT, runExceptT, throwError )
 
 -- more-unicode ------------------------
 
+import Data.MoreUnicode.Either   ( 𝔼, pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Functor  ( (⊳), (⩺) )
+import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
+import Data.MoreUnicode.Monad    ( (≫) )
 
 -------------------------------------------------------------------------------
 
 {- | Map the exception part of a MonadError; can also be used on MonadThrow
      to convert to a MonadError (or indeed any Either). -}
-mapMError ∷ ∀ ε α β μ . (MonadError ε μ, HasCallStack) ⇒
-            (α → ε) → Either α β → μ β
+mapMError ∷ ∀ ε α β μ . (MonadError ε μ, HasCallStack) ⇒ (α → ε) → 𝔼 α β → μ β
 mapMError f = fromRight ∘ first f
 
 ----------------------------------------
@@ -55,17 +57,18 @@ mapMError' f = join ∘ (mapMError f ⩺ splitMError)
 ----------------------------------------
 
 {- | `fromJust`, throwing an error on Nothing -}
-eFromMaybe ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ ε → Maybe α → μ α
+eFromMaybe ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ ε → 𝕄 α → μ α
 eFromMaybe e = maybe (throwError e) return
 
-{-# DEPRECATED fromMaybe "use `eFromMaybe` to avoid clash with `Data.Maybe.fromMaybe`" #-}
-fromMaybe ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ ε → Maybe α → μ α
+{-# DEPRECATED fromMaybe
+               "use `eFromMaybe` to avoid clash with `Data.Maybe.fromMaybe`" #-}
+fromMaybe ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ ε → 𝕄 α → μ α
 fromMaybe = eFromMaybe
 
 ----------------------------------------
 
 -- | fromRight, throwing an error on Left
-fromRight ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ Either ε α → μ α
+fromRight ∷ ∀ ε α μ . (MonadError ε μ, HasCallStack) ⇒ 𝔼 ε α → μ α
 fromRight = either throwError return
 
 ----------------------------------------
@@ -95,21 +98,27 @@ __monadError__ = fmap (either (error ∘ toString) id) ⊳ splitMError
 ----------------------------------------
 
 {- | Convert an either to a maybe on the RHS. -}
-eToMaybe ∷ ∀ χ α . Either χ α → Maybe α
-eToMaybe (Left  _) = Nothing
-eToMaybe (Right a) = Just a
+eToMaybe ∷ ∀ χ α . 𝔼 χ α → 𝕄 α
+eToMaybe (𝕷  _) = 𝕹
+eToMaybe (𝕽 a) = 𝕵 a
 
 -- | Pronounced 'maybe-funnel', or maybe 'yus', this is an alias for `eToMaybe`.
-ѭ ∷ ∀ χ α . Either χ α → Maybe α
+ѭ ∷ ∀ χ α . 𝔼 χ α → 𝕄 α
 ѭ = eToMaybe
 
 ----------------------------------------
 
 {- | Convert a MonadError (or, indeed, any `Either`) to a MonadFail. -}
-mErrFail ∷ ∀ ε α η . (MonadFail η, Printable ε, HasCallStack) ⇒ Either ε α → η α
+mErrFail ∷ ∀ ε α η . (MonadFail η, Printable ε, HasCallStack) ⇒ 𝔼 ε α → η α
 mErrFail = either (fail ∘ toString) return
 
-ӂ ∷ ∀ ε α η . (MonadFail η, Printable ε, HasCallStack) ⇒ Either ε α → η α
+ӂ ∷ ∀ ε α η . (MonadFail η, Printable ε, HasCallStack) ⇒ 𝔼 ε α → η α
 ӂ = mErrFail
+
+---------------------------------------
+
+{- | Modify the error in a MonadError. -}
+modifyError ∷ ∀ ε' ε α η . MonadError ε' η ⇒ (ε → ε') → ExceptT ε η α → η α
+modifyError f go = ѥ go ≫ either (throwError ∘ f) return
 
 -- that's all, folks! ---------------------------------------------------------

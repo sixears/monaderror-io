@@ -1,3 +1,7 @@
+1.2.1.0 2021-10-17
+==================
+- add modifyError, annotateIOE
+
 1.2.0.0 2021-09-04
 ==================
 - add explicit 'forall's throughout MonadError.hs to fix the ordering of the

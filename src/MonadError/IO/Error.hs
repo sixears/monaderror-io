@@ -1,5 +1,6 @@
 module MonadError.IO.Error
   ( AsIOError(..), IOError -- hide constructor, to allow for upgrades, etc.,
+  , annotateIOE
   , (~~), ioeAdd
   , ioeErrorString, ioeFilename, ioeHandle, ioeLocation, ioeType
   , ioErr, ioError, isNoSuchThingError, isPermError
@@ -20,12 +21,11 @@ import Control.Exception.Base  ( IOException )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Control.Monad           ( join, return )
 import Data.Bool               ( Bool( False ) )
-import Data.Either             ( Either( Left, Right ) )
 import Data.Eq                 ( Eq( (==) ) )
 import Data.Foldable           ( Foldable, any )
-import Data.Function           ( ($), flip, id )
+import Data.Function           ( ($), (&), flip, id )
 import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe, maybe )
+import Data.Maybe              ( fromMaybe, maybe )
 import Data.String             ( String )
 import GHC.Generics            ( Generic )
 import GHC.Stack               ( CallStack, HasCallStack, callStack )
@@ -57,7 +57,7 @@ import HasCallstack  ( HasCallstack( callstack ) )
 
 import Control.Lens.Fold     ( has )
 import Control.Lens.Getter   ( to )
-import Control.Lens.Lens     ( lens )
+import Control.Lens.Lens     ( Lens', lens )
 import Control.Lens.Prism    ( Prism', prism' )
 import Control.Lens.Review   ( (#) )
 import System.IO.Error.Lens  ( _NoSuchThing, _InappropriateType
@@ -70,9 +70,10 @@ import Control.Monad.Except  ( ExceptT, MonadError, throwError )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Bool     ( 𝔹 )
+import Data.MoreUnicode.Either   ( 𝔼, pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⩼) )
-import Data.MoreUnicode.Maybe    ( 𝕄 )
+import Data.MoreUnicode.Lens     ( (⩼), (⨦) )
+import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
 import Data.MoreUnicode.String   ( 𝕊 )
 
 -- text-printer ------------------------
@@ -83,7 +84,7 @@ import qualified  Text.Printer  as  P
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadError  ( splitMError )
+import MonadError  ( modifyError, splitMError )
 
 -------------------------------------------------------------------------------
 
@@ -126,7 +127,7 @@ class AsIOError e where
 
 instance AsIOError IOError where
   _IOError = id
-  _IOErr   = prism' ioErr (Just ∘ unErr)
+  _IOErr   = prism' ioErr (𝕵 ∘ unErr)
 
 ----------------------------------------
 
@@ -184,32 +185,32 @@ isPermError = has (_IOErr ∘ to ioeGetErrorType ∘ _PermissionDenied)
      value (for non-errors).
 -}
 squashIOErrs ∷ (AsIOError ε, MonadError ε μ, Foldable φ) ⇒
-               φ (IOError → Bool) → Either ε α → μ (Maybe α)
-squashIOErrs ls (Left e) | maybe False (\ ps → any ($ ps) ls) (e ⩼ _IOError)
-                                                              =  return Nothing
-squashIOErrs _  (Left e)                                      =  throwError e
-squashIOErrs _  (Right r)                                     =  return $ Just r
+               φ (IOError → Bool) → 𝔼 ε α → μ (𝕄 α)
+squashIOErrs ls (𝕷 e) | maybe False (\ ps → any ($ ps) ls) (e ⩼ _IOError)
+                                                              =  return 𝕹
+squashIOErrs _  (𝕷 e)                                         =  throwError e
+squashIOErrs _  (𝕽 r)                                         =  return $ 𝕵 r
 
 ----------------------------------------
 
 {- | Specialization of `squashIOErrs` to Bool; sending the positively identified
      errors to False. -}
 squashIOErrsB ∷ (AsIOError ε, MonadError ε μ, Foldable φ) ⇒
-                φ (IOError → Bool) → Either ε Bool → μ Bool
+                φ (IOError → Bool) → 𝔼 ε Bool → μ Bool
 squashIOErrsB f = fmap (maybe False id) ∘ squashIOErrs f
 
 {- | Given an Either IOError α (typically, a MonadError IOError μ ⇒ μ α),
      convert a 'NoSuchThing' error (e.g., DoesNotExist) to a Nothing of Maybe α.
  -}
-squashNoSuchThing ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε α → μ (Maybe α)
+squashNoSuchThing ∷ (AsIOError ε, MonadError ε μ) ⇒ 𝔼 ε α → μ (𝕄 α)
 squashNoSuchThing = squashIOErrs [isNoSuchThingError]
 
 {- | `squashNoSuchThing` for `ExceptT` -}
-squashNoSuchThingT ∷ (AsIOError ε, MonadError ε μ) ⇒ ExceptT ε μ α → μ (Maybe α)
+squashNoSuchThingT ∷ (AsIOError ε, MonadError ε μ) ⇒ ExceptT ε μ α → μ (𝕄 α)
 squashNoSuchThingT = join ∘ fmap squashNoSuchThing ∘ splitMError
 
 {- | `squashNoSuchThing` specialized to `Bool` (akin to `squashIOErrsB` -}
-squashNoSuchThingB ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε Bool → μ Bool
+squashNoSuchThingB ∷ (AsIOError ε, MonadError ε μ) ⇒ 𝔼 ε Bool → μ Bool
 squashNoSuchThingB = squashIOErrsB [isNoSuchThingError]
 
 ----------------------------------------
@@ -222,17 +223,16 @@ isInappropriateTypeError =
 {- | Given an Either IOError α (typically, a MonadError IOError μ ⇒ μ α),
      convert an 'InappropriateType' error to a Nothing of Maybe α.
  -}
-squashInappropriateType ∷ (AsIOError ε, MonadError ε μ) ⇒
-                          Either ε α → μ (Maybe α)
+squashInappropriateType ∷ (AsIOError ε, MonadError ε μ) ⇒ 𝔼 ε α → μ (𝕄 α)
 squashInappropriateType = squashIOErrs [isInappropriateTypeError]
 
 {- | `squashInappropriateType` for `ExceptT` -}
 squashInappropriateTypeT ∷ (AsIOError ε, MonadError ε μ) ⇒
-                           ExceptT ε μ α → μ (Maybe α)
+                           ExceptT ε μ α → μ (𝕄 α)
 squashInappropriateTypeT = join ∘ fmap squashInappropriateType ∘ splitMError
 
 {- | `squashInappropriateType` specialized to `𝔹` (akin to `squashIOErrsB` -}
-squashInappropriateTypeB ∷ (AsIOError ε, MonadError ε μ) ⇒ Either ε 𝔹 → μ 𝔹
+squashInappropriateTypeB ∷ (AsIOError ε, MonadError ε μ) ⇒ 𝔼 ε 𝔹 → μ 𝔹
 squashInappropriateTypeB = squashIOErrsB [isInappropriateTypeError]
 
 ----------------------------------------
@@ -247,14 +247,22 @@ class IOEAddable α where
 instance IOEAddable FilePath where
   ioeAdd f (IOErr e cs) =
     let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
-                       (ioeGetHandle e) (Just $ fromMaybe f (ioeGetFileName e))
+                       (ioeGetHandle e) (𝕵 $ fromMaybe f (ioeGetFileName e))
      in _IOError # IOErr e' cs
 
 instance IOEAddable ℍ where
   ioeAdd h (IOErr e cs) =
     let e' = mkIOError (ioeGetErrorType e) (ioeGetLocation e)
-                       (Just $ fromMaybe h (ioeGetHandle e)) (ioeGetFileName e)
+                       (𝕵 $ fromMaybe h (ioeGetHandle e)) (ioeGetFileName e)
      in _IOError # IOErr e' cs
 
+----------------------------------------
+
+{- | Given a lens into a maybe field of an `IOException`; update the field
+     with a given value iff that field is `𝕹`.-}
+annotateIOE ∷ ∀ ε β α (η ∷ * → *) .
+              (MonadError ε η, AsIOError ε) =>
+              Lens' IOException (𝕄 α) → α → ExceptT ε η β → η β
+annotateIOE f x = modifyError (\ e → e & _IOErr ∘ f ⨦ x)
 
 -- that's all, folks! ----------------------------------------------------------
