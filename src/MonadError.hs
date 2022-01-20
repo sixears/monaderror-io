@@ -4,33 +4,20 @@ module MonadError
   , ѥ, ж, ѭ, ӂ
   , eFromMaybe, eToMaybe, fromMaybe, fromRight, mapMError, mapMError'
   , modifyError, __monadError__, mErrFail, splitMError, throwError
+  , leftFail, leftFailShow, leftFailP
   )
 where
 
+import Base0
 import Prelude ( error )
 
 -- base --------------------------------
 
-import Control.Monad       ( Monad, join, return )
 import Control.Monad.Fail  ( MonadFail, fail )
-import Data.Bifunctor      ( first )
-import Data.Either         ( either )
-import Data.Function       ( id )
-import Data.Functor        ( fmap )
-import Data.Maybe          ( maybe )
-import GHC.Stack           ( HasCallStack )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toString )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( MonadError, ExceptT, runExceptT, throwError )
+import Control.Monad.Except  ( runExceptT )
 
 -- more-unicode ------------------------
 
@@ -38,6 +25,7 @@ import Data.MoreUnicode.Either   ( 𝔼, pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Functor  ( (⊳), (⩺) )
 import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
 import Data.MoreUnicode.Monad    ( (≫) )
+import Data.MoreUnicode.String   ( 𝕊 )
 
 -------------------------------------------------------------------------------
 
@@ -120,5 +108,23 @@ mErrFail = either (fail ∘ toString) return
 {- | Modify the error in a MonadError. -}
 modifyError ∷ ∀ ε' ε α η . MonadError ε' η ⇒ (ε → ε') → ExceptT ε η α → η α
 modifyError f go = ѥ go ≫ either (throwError ∘ f) return
+
+----------------------------------------
+
+{-| turn an `𝔼 𝕊` into a `MonadFail` -}
+leftFail ∷ (MonadFail η) ⇒ 𝔼 𝕊 α → η α
+leftFail = either fail return
+
+----------------------------------------
+
+{-| turn an `𝔼 ε` into a `MonadFail` by `show`ing the `ε` -}
+leftFailShow ∷ (MonadFail η, Show ε) ⇒ 𝔼 ε α → η α
+leftFailShow = leftFail ∘ first show
+
+----------------------------------------
+
+{-| turn an `𝔼 ε` into a `MonadFail` by `toString`ing the `ε` -}
+leftFailP ∷ (MonadFail η, Printable ε) ⇒ 𝔼 ε α → η α
+leftFailP = leftFail ∘ first toString
 
 -- that's all, folks! ---------------------------------------------------------

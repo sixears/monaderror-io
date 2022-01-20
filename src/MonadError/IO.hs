@@ -6,40 +6,25 @@ module MonadError.IO
   )
 where
 
+import Base0
+
 -- base --------------------------------
 
 import qualified  System.IO.Error
 
-import Control.Exception.Base  ( Exception, IOException, throwIO )
-import Control.Monad           ( join, return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Bifunctor          ( first )
-import Data.Either             ( Either, either )
-import Data.Function           ( ($) )
-import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( IO )
+import Control.Exception.Base  ( IOException, throwIO )
 import System.IO.Error         ( catchIOError, userError )
-import Text.Show               ( Show( show ) )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toString )
 
 -- more-unicode ------------------------
 
+import Data.MoreUnicode.Either   ( 𝔼 )
 import Data.MoreUnicode.Functor  ( (⊳) )
+import Data.MoreUnicode.Maybe    ( 𝕄 )
 import Data.MoreUnicode.Monad    ( (≫) )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( ExceptT, MonadError, runExceptT, throwError )
-import Control.Lens.Review   ( (#) )
+import Control.Monad.Except  ( runExceptT )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -59,7 +44,7 @@ ioMonadError io = liftIO $ catchIOError (return ⊳ io) (return ∘ throwError)
 
 {- | Hoist an IO (Either IOException α) to `MonadError`/`MonadIO`. -}
 hoistMonadIOError ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack)
-                  ⇒ IO (Either IOException α) → μ α
+                  ⇒ IO (𝔼 IOException α) → μ α
 hoistMonadIOError eio = liftIO eio ≫ mapMError (_IOErr #)
 
 ----------------------------------------
@@ -83,7 +68,7 @@ asIOErrorT = join ∘ asIOError ∘ splitMError
      `MonadIO`); BUT any 'NoSuchThing' error (e.g., DoesNotExist) will be
      converted to `Nothing`. -}
 asIOErrorY ∷ ∀ α ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-            IO α -> μ (Maybe α)
+            IO α -> μ (𝕄 α)
 
 asIOErrorY = join ∘ fmap squashNoSuchThing ∘ splitMError ∘ asIOError
 
@@ -137,7 +122,7 @@ ioThrow ∷ (MonadIO μ, Printable τ, HasCallStack) ⇒ τ → μ α
 ioThrow = liftIO ∘ System.IO.Error.ioError ∘ System.IO.Error.userError ∘ toString
 
 {- | Convert a left value to an `IOException`. -}
-eitherIOThrow ∷ (Show e, MonadIO μ, HasCallStack) ⇒ Either e a → μ a
+eitherIOThrow ∷ (Show e, MonadIO μ, HasCallStack) ⇒ 𝔼 e a → μ a
 eitherIOThrow =
   either (liftIO ∘ System.IO.Error.ioError ∘ userError ∘ show) return
 

@@ -12,38 +12,24 @@ module MonadError.IO.Error
   )
 where
 
+import Base0
+
 -- base --------------------------------
 
 import qualified  System.IO.Error  as  SysIOError
 
-import Control.Exception       ( Exception )
 import Control.Exception.Base  ( IOException )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Control.Monad           ( join, return )
 import Data.Bool               ( Bool( False ) )
-import Data.Eq                 ( Eq( (==) ) )
 import Data.Foldable           ( Foldable, any )
-import Data.Function           ( ($), (&), flip, id )
-import Data.Functor            ( fmap )
-import Data.Maybe              ( fromMaybe, maybe )
-import Data.String             ( String )
+import Data.Function           ( flip )
+import Data.Maybe              ( fromMaybe )
 import GHC.Generics            ( Generic )
-import GHC.Stack               ( CallStack, HasCallStack, callStack )
 import System.IO               ( FilePath, Handle )
 import System.IO.Error         ( IOErrorType
                                , ioeGetErrorString, ioeGetErrorType
                                , ioeGetFileName, ioeGetHandle, ioeGetLocation
                                , ioeGetErrorType, mkIOError, userError
                                )
-import Text.Show               ( Show( show ) )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ) )
 
 -- deepseq -----------------------------
 
@@ -57,15 +43,8 @@ import HasCallstack  ( HasCallstack( callstack ) )
 
 import Control.Lens.Fold     ( has )
 import Control.Lens.Getter   ( to )
-import Control.Lens.Lens     ( Lens', lens )
-import Control.Lens.Prism    ( Prism', prism' )
-import Control.Lens.Review   ( (#) )
 import System.IO.Error.Lens  ( _NoSuchThing, _InappropriateType
                              , _PermissionDenied )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( ExceptT, MonadError, throwError )
 
 -- more-unicode ------------------------
 

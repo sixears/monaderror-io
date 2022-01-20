@@ -1,3 +1,7 @@
+1.2.2.0 2022-01-17
+==================
+- add leftFail, leftFailP, leftFailShow
+
 1.2.1.0 2021-10-17
 ==================
 - add modifyError, annotateIOE
