@@ -1,3 +1,7 @@
+1.2.3.0 2022-05-23
+==================
+- add unsquashNoSuchThing{,'}
+
 1.2.2.0 2022-01-17
 ==================
 - add leftFail, leftFailP, leftFailShow

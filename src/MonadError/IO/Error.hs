@@ -8,7 +8,9 @@ module MonadError.IO.Error
   , mkIOErr
   , squashIOErrs, squashIOErrsB
   , squashInappropriateType, squashInappropriateTypeB, squashInappropriateTypeT
-  , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB, userE
+  , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB
+  , unsquashNoSuchThing, unsquashNoSuchThing'
+  , userE
   )
 where
 
@@ -26,6 +28,7 @@ import Data.Maybe              ( fromMaybe )
 import GHC.Generics            ( Generic )
 import System.IO               ( FilePath, Handle )
 import System.IO.Error         ( IOErrorType
+                               , doesNotExistErrorType
                                , ioeGetErrorString, ioeGetErrorType
                                , ioeGetFileName, ioeGetHandle, ioeGetLocation
                                , ioeGetErrorType, mkIOError, userError
@@ -213,6 +216,28 @@ squashInappropriateTypeT = join ∘ fmap squashInappropriateType ∘ splitMError
 {- | `squashInappropriateType` specialized to `𝔹` (akin to `squashIOErrsB` -}
 squashInappropriateTypeB ∷ (AsIOError ε, MonadError ε μ) ⇒ 𝔼 ε 𝔹 → μ 𝔹
 squashInappropriateTypeB = squashIOErrsB [isInappropriateTypeError]
+
+----------------------------------------
+
+{-| Turn a `𝕄 file` into a `MonadError AsIOError file` (where `𝕹` becomes a
+    DoesNotExist error). -}
+unsquashNoSuchThing ∷ ∀ ε τ α η .
+                      (AsIOError ε, MonadError ε η, HasCallStack, Printable τ) ⇒
+                      τ → FilePath → 𝕄 α → η α
+unsquashNoSuchThing msg fp 𝕹 = throwError $
+  _IOErr # mkIOError doesNotExistErrorType (toString msg) 𝕹 (𝕵 fp)
+unsquashNoSuchThing _ _ (𝕵 x) = return x
+
+----------------------------------------
+
+{-| Like `unsquashNoSuchThing`, but joins the error into an existing error
+    context. -}
+unsquashNoSuchThing' ∷ ∀ ε α τ η .
+                       (Printable τ, AsIOError ε, MonadError ε η, HasCallStack)⇒
+                       (FilePath → η (𝕄 α)) → τ → FilePath → η α
+unsquashNoSuchThing' f msg = join ∘ go f msg
+                             where go f' m fp =
+                                     unsquashNoSuchThing m fp ⊳ f' fp
 
 ----------------------------------------
 
