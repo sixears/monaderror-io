@@ -2,7 +2,7 @@
 module MonadError
   ( MonadError
   , ѥ, ж, ѭ, ӂ
-  , eFromMaybe, eToMaybe, fromMaybe, fromRight, mapMError, mapMError'
+  , eFromMaybe, eToMaybe, eitherME, fromMaybe, fromRight, mapMError, mapMError'
   , modifyError, __monadError__, mErrFail, splitMError, throwError
   , leftFail, leftFailShow, leftFailP
   )
@@ -93,6 +93,14 @@ eToMaybe (𝕽 a) = 𝕵 a
 -- | Pronounced 'maybe-funnel', or maybe 'yus', this is an alias for `eToMaybe`.
 ѭ ∷ ∀ χ α . 𝔼 χ α → 𝕄 α
 ѭ = eToMaybe
+
+----------------------------------------
+
+{-| Convert an `Either`, e.g., a MonadThrow or similar, and turn it into a
+    `MonadError` -}
+eitherME ∷ ∀ ε ε' α η . (MonadError ε η, HasCallStack) ⇒
+           (ε' → ε) -> Either ε' α → η α
+eitherME f = either (throwError ∘ f) return
 
 ----------------------------------------
 
