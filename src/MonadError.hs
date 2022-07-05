@@ -3,7 +3,8 @@ module MonadError
   ( MonadError
   , ѥ, ж, ѭ, ӂ
   , eFromMaybe, eToMaybe, eitherME, fromMaybe, fromRight, mapMError, mapMError'
-  , modifyError, __monadError__, mErrFail, splitMError, throwError
+  , modifyError, __monadError__, mErrFail, splitMError, splitMError', sme
+  , throwError
   , leftFail, leftFailShow, leftFailP
   )
 where
@@ -71,6 +72,15 @@ splitMError f = either throwError return ⊳ runExceptT f
 ѥ ∷ ∀ ε α η μ . (MonadError ε η, Monad μ, HasCallStack) ⇒
     ExceptT ε μ α → μ (η α)
 ѥ = splitMError
+
+{-| `splitMError`, specialized to return an @Either@ (for convenience in the
+    repl). -}
+splitMError' ∷ ∀ ε α μ . (Monad μ) ⇒ ExceptT ε μ α → μ (Either ε α)
+splitMError' = splitMError
+
+{-| convenience name for `splitMError` -}
+sme ∷ ∀ ε α μ . (Monad μ) ⇒ ExceptT ε μ α → μ (Either ε α)
+sme = splitMError'
 
 ----------------------------------------
 
