@@ -6,8 +6,8 @@
     build-utils.url   = "github:sixears/flake-build-utils/r1.0.0.3";
 
     base0.url         = "github:sixears/base0/r0.0.4.1";
-    has-callstack.url = "github:sixears/has-callstack/r1.0.1.3";
-    more-unicode.url  = "github:sixears/more-unicode/r0.0.17.1";
+    has-callstack.url = "github:sixears/has-callstack/r1.0.1.4";
+    more-unicode.url  = "github:sixears/more-unicode/r0.0.17.2";
   };
 
   outputs = { self, nixpkgs, flake-utils, build-utils
