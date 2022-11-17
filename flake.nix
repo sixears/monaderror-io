@@ -6,7 +6,7 @@
     build-utils.url   = "github:sixears/flake-build-utils/r1.0.0.11";
 
     base0.url         = "github:sixears/base0/r0.0.4.7";
-    has-callstack.url = "github:sixears/has-callstack/r1.0.1.11";
+    has-callstack.url = "github:sixears/has-callstack/r1.0.1.12";
     more-unicode.url  = "github:sixears/more-unicode/r0.0.17.8";
   };
 
