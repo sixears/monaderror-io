@@ -18,7 +18,7 @@
       };
       ghc = p: p.ghc8107; # for tfmt
 
-      callPackage = { mkDerivation, lib, system
+      callPackage = { mkDerivation, lib, mapPkg, system
                     , base, deepseq, lens, mtl, text-printer
                     }:
         let
