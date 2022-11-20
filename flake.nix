@@ -26,7 +26,7 @@
         in
           mkDerivation {
             pname = "monaderror-io";
-            version = "1.2.5.13";
+            version = "1.2.5.19";
             src = ./.;
             libraryHaskellDepends = [
               base deepseq lens mtl text-printer
