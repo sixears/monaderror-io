@@ -10,7 +10,7 @@ module MonadError.IO.Error
   , squashInappropriateType, squashInappropriateTypeB, squashInappropriateTypeT
   , squashNoSuchThing, squashNoSuchThingT, squashNoSuchThingB
   , unsquashNoSuchThing, unsquashNoSuchThing'
-  , userE
+  , userE, throwUserError
   )
 where
 
@@ -268,5 +268,11 @@ annotateIOE ∷ ∀ ε β α (η ∷ * → *) .
               (MonadError ε η, AsIOError ε) =>
               Lens' IOException (𝕄 α) → α → ExceptT ε η β → η β
 annotateIOE f x = modifyError (\ e → e & _IOErr ∘ f ⨦ x)
+
+----------------------------------------
+
+{-| given a message, throw a @UserError@ into a @MonadError@ -}
+throwUserError ∷ ∀ ε τ α η . (Printable τ, AsIOError ε, MonadError ε η) ⇒ τ → η α
+throwUserError = throwError ∘ userE ∘ toString
 
 -- that's all, folks! ----------------------------------------------------------
